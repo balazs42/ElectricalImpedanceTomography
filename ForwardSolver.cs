@@ -64,12 +64,23 @@ namespace EIT_SOLVER
 
             for (int i = 0; i < 3; i++)
             {
-                for(int j = i; j < 3; j++)
+                for(int j = 0; j < 3; j++)
                 {
                     // K_ij = \sigma_T |T| [\grad(\phi_i^T \cdot \grad(\phi_j^T))]
                     localStiffnessMatrix[i, j] = sigma * area * dotProducts[i, j];
                 }
             }
+
+#if _LOGGING_
+            Console.Write("[");
+            for(int i = 0; i < 3;i++)
+            {
+                for (int j = 0; j < 3; j++)
+                    Console.Write("{0} \t", localStiffnessMatrix[i, j]);
+                Console.WriteLine();
+            }
+            Console.WriteLine("]");
+#endif
 
             return localStiffnessMatrix;
         }
@@ -79,81 +90,81 @@ namespace EIT_SOLVER
             // Clear the stiffness matrix
             K = new double[N_phi, N_phi];
 
-            foreach(Vertex vertex in Mesh.Vertices)
-            {
-                foreach(Vertex neighbourVertex in vertex.Neighbours)
-                {
-                    Element? element = Mesh.Elements.Find(x => x.V1 == vertex || x.V2 == vertex || x.V3 == vertex);
-
-                    if (element != null)
-                    {
-                        if (vertex.DomainIndex == -1 || element.V1.DomainIndex == -1) continue;
-
-                        double sigma = element.Sigma;
-                        double area = element.Area;
-
-                        if (element.V1 == neighbourVertex)
-                        {
-                            double[,] gradPhi = element.GradPhi;
-
-                            double dotProd = (gradPhi[0, 0] * gradPhi[1, 0] + gradPhi[0, 1] * gradPhi[1, 1]);
-                            K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
-
-                        }
-                        else if (element.V2 == neighbourVertex)
-                        {
-                            double[,] gradPhi = element.GradPhi;
-
-                            double dotProd = (gradPhi[1, 0] * gradPhi[1, 1] + gradPhi[2, 0] * gradPhi[2, 1]);
-                            K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
-
-                        }
-                        else if (element.V3 == neighbourVertex)
-                        {
-                            double[,] gradPhi = element.GradPhi;
-
-                            double dotProd = (gradPhi[0, 0] * gradPhi[2, 0] + gradPhi[0, 1] * gradPhi[2, 1]);
-                            K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
-                        }
-                    }
-
-                }
-            }
-
-
-            //// Get each local stiffness matrix and add it to the global stiffness matrix
-            //foreach (Element element in Mesh.Elements)
+            //foreach(Vertex vertex in Mesh.Vertices)
             //{
-            //    int rowIndex = 0;
-            //    int colIndex = 0;
-
-            //    // Calculate the local stiffness matrix
-            //    double[,] localStiffnessMatrix = CalculateElementStiffnessMatrix(element);
-
-            //    // Retrieve the vertices of the element
-            //    Vertex[] elementVertices = { element.V1, element.V2, element.V3 };
-
-            //    // Add the local stiffness matrix to the global stiffness matrix
-            //    for (int i = 0; i < 3; i++)
+            //    foreach(Vertex neighbourVertex in vertex.Neighbours)
             //    {
-            //        // Row index is the global index of the i-th vertex
-            //        rowIndex = elementVertices[i].DomainIndex;
-                    
-            //        // Skip boundary vertices
-            //        if (rowIndex < 0) continue;
+            //        Element? element = Mesh.Elements.Find(x => x.V1 == vertex || x.V2 == vertex || x.V3 == vertex);
 
-            //        for (int j = 0; j < 3; j++)
+            //        if (element != null)
             //        {
-            //            // Column index is the global index of the j-th vertex
-            //            colIndex = elementVertices[j].DomainIndex;
+            //            if (vertex.DomainIndex == -1 || element.V1.DomainIndex == -1) continue;
 
-            //            // Skip boundary vertices
-            //            if(colIndex < 0) continue;
+            //            double sigma = element.Sigma;
+            //            double area = element.Area;
 
-            //            K[rowIndex, colIndex] += localStiffnessMatrix[i, j];
+            //            if (element.V1 == neighbourVertex)
+            //            {
+            //                double[,] gradPhi = element.GradPhi;
+
+            //                double dotProd = (gradPhi[0, 0] * gradPhi[1, 0] + gradPhi[0, 1] * gradPhi[1, 1]);
+            //                K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
+
+            //            }
+            //            else if (element.V2 == neighbourVertex)
+            //            {
+            //                double[,] gradPhi = element.GradPhi;
+
+            //                double dotProd = (gradPhi[1, 0] * gradPhi[1, 1] + gradPhi[2, 0] * gradPhi[2, 1]);
+            //                K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
+
+            //            }
+            //            else if (element.V3 == neighbourVertex)
+            //            {
+            //                double[,] gradPhi = element.GradPhi;
+
+            //                double dotProd = (gradPhi[0, 0] * gradPhi[2, 0] + gradPhi[0, 1] * gradPhi[2, 1]);
+            //                K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
+            //            }
             //        }
+
             //    }
             //}
+
+
+            // Get each local stiffness matrix and add it to the global stiffness matrix
+            foreach (Element element in Mesh.Elements)
+            {
+                int rowIndex = 0;
+                int colIndex = 0;
+
+                // Calculate the local stiffness matrix
+                double[,] localStiffnessMatrix = CalculateElementStiffnessMatrix(element);
+
+                // Retrieve the vertices of the element
+                Vertex[] elementVertices = { element.V1, element.V2, element.V3 };
+
+                // Add the local stiffness matrix to the global stiffness matrix
+                for (int i = 0; i < 3; i++)
+                {
+                    // Row index is the global index of the i-th vertex
+                    rowIndex = elementVertices[i].DomainIndex;
+
+                    // Skip boundary vertices
+                    if (rowIndex < 0) continue;
+
+                    for (int j = 0; j < 3; j++)
+                    {
+                        // Column index is the global index of the j-th vertex
+                        colIndex = elementVertices[j].DomainIndex;
+
+                        // Skip boundary vertices
+                        if (colIndex < 0) continue;
+
+                        K[rowIndex, colIndex] += localStiffnessMatrix[i, j];
+                    }
+                }
+            }
 
 #if _LOGGING_
             Console.WriteLine("The stiffness matrix:");
@@ -162,9 +173,9 @@ namespace EIT_SOLVER
                 for (int j = 0; j < N_phi; j++)
                 {
                     if (K[i, j] == 0)
-                        Console.Write("0 ");//Console.Write(" " + K[i, j].ToString("F2") + " ");
+                        Console.Write(" " + K[i, j].ToString("F2") + " "); //Console.Write("0 ");// 
                     else
-                        Console.Write("1 ");//Console.Write(K[i, j].ToString("F2") + " ");
+                        Console.Write(K[i, j].ToString("F2") + " ");//Console.Write("1 ");//
 
                 }
                 Console.Write(";");
@@ -188,8 +199,8 @@ namespace EIT_SOLVER
             B = new double[N_phi, N_lambda];
 
             // Define quadrature parameters
-            double point1 = 0.5 - Math.Sqrt(3) / 6;
-            double point2 = 0.5 + Math.Sqrt(3) / 6;
+            double point1 = 0.5 - Math.Sqrt(3.0) / 6.0;
+            double point2 = 0.5 + Math.Sqrt(3.0) / 6.0;
 
             double weight1 = 0.5;
             double weight2 = 0.5;
@@ -199,43 +210,111 @@ namespace EIT_SOLVER
 
             int quadraturePoints = points.Length;
 
-            // Iterate through each boundary edge
-            foreach (Edge boundaryEdge in Mesh.BoundaryEdges)
+            // Iterate through each boundary vertex
+            foreach (Vertex boundaryVertex in Mesh.BoundaryVertices)
             {
-                Vertex V1 = boundaryEdge.Vertices[0];
-                Vertex V2 = boundaryEdge.Vertices[1];
+                Vertex[] neighbourInternals = new Vertex[2];
 
-                // Iterate through each boundary quadrature point along edge
-                for(int q = 0; q < quadraturePoints; q++)
+                // Seraching for the two other internal vertices next to J-th boundary vertex
+                for (int i = 0, l = 0; i < boundaryVertex.Neighbours.Count; i++)
                 {
-                    // Parametric point
-                    double xq = V1.X + points[q] * (V2.X - V1.X);
-                    double yq = V1.Y + points[q] * (V2.Y - V1.Y);
-
-                    // Evaluate shape function in given point
-                    Element? boundaryElement = Mesh.Elements.Find(x => (x.Edges[0].IsBoundary || x.Edges[1].IsBoundary || x.Edges[2].IsBoundary));
-
-                    if(boundaryElement != null)
+                    if (!boundaryVertex.Neighbours[i].IsBoundary)
                     {
-                        // Global indexes of the boundary matrix
-                        int k = V1.BoundaryIndex;
-                        int j = V2.BoundaryIndex;
-
-                        // Evaluate shape functions (in our case tent functions) using barycentric coordinates
-                        double phiK_XQ = (1 - xq);//EvaluateTentFunction(boundaryElement, 0, xq, yq);
-                        double psiJ_XQ = (xq);//EvaluateTentFunction(boundaryElement, 0, xq, yq);
-
-                        double lenght = boundaryEdge.Length;
-
-                        // Quadrature: w * phi_k(xq) * psi_j(xq) * |x_a - x_b|
-                        B[k, j] = weights[q] * phiK_XQ * psiJ_XQ * lenght;
+                        neighbourInternals[l] = boundaryVertex.Neighbours[i];
+                        l++;
                     }
-                    else
+                }
+
+                int numbNeighbours = 0;
+                for(int i = 0; i < neighbourInternals.Length; i++)
+                {
+                    if (neighbourInternals[i] != null)
+                        numbNeighbours++;
+                }
+
+                // Calculate corresponding B_kj values
+                for (int i = 0; i < numbNeighbours; i++)
+                {
+                    Vertex internalNeighbour = neighbourInternals[i];
+
+                    // Creating edge, so it calculates sitance instantly
+                    Edge edge = new Edge(new Vertex[]{ boundaryVertex, internalNeighbour }, false);
+
+                    // Iterate through each boundary quadrature point along edge
+                    for (int q = 0; q < quadraturePoints; q++)
                     {
-                        throw new ArgumentNullException(nameof(boundaryElement), "Element argument was null during shape function evaluation!");
+                        // Parametric point
+                        double xq = boundaryVertex.X + points[q] * (internalNeighbour.X - boundaryVertex.X);
+                        double yq = boundaryVertex.Y + points[q] * (internalNeighbour.Y - boundaryVertex.Y);
+
+                        // Evaluate shape function in given point
+                        Element? boundaryElement = Mesh.Elements.Find(x => (x.V1 == boundaryVertex ||
+                                                                            x.V2 == boundaryVertex ||
+                                                                            x.V3 == boundaryVertex || 
+                                                                            x.V1 == internalNeighbour || 
+                                                                            x.V2 == internalNeighbour || 
+                                                                            x.V3 == internalNeighbour));
+
+                        if (boundaryElement != null)
+                        {
+                            // Global indexes of the boundary matrix
+                            int j = boundaryVertex.BoundaryIndex;
+                            int k = internalNeighbour.DomainIndex;
+
+                            // Evaluate shape functions (in our case tent functions) using barycentric coordinates
+                            double phiK_XQ = EvaluateTentFunction(boundaryElement, 0, xq, yq);
+                            double psiJ_XQ = EvaluateTentFunction(boundaryElement, 0, xq, yq);
+
+                            double lenght = edge.Length;
+
+                            // Quadrature: w * phi_k(xq) * psi_j(xq) * |x_a - x_b|
+                            B[k, j] += weights[q] * phiK_XQ * psiJ_XQ * lenght;
+                        }
+                        else
+                        {
+                            throw new ArgumentNullException(nameof(boundaryElement), "Element argument was null during shape function evaluation!");
+                        }
                     }
                 }
             }
+
+            //foreach (Edge boundaryEdge in Mesh.BoundaryEdges)
+            //{
+            //    Vertex V1 = boundaryEdge.Vertices[0];
+            //    Vertex V2 = boundaryEdge.Vertices[1];
+
+            //    // Iterate through each boundary quadrature point along edge
+            //    for (int q = 0; q < quadraturePoints; q++)
+            //    {
+            //        // Parametric point
+            //        double xq = V1.X + points[q] * (V2.X - V1.X);
+            //        double yq = V1.Y + points[q] * (V2.Y - V1.Y);
+
+            //        // Evaluate shape function in given point
+            //        Element? boundaryElement = Mesh.Elements.Find(x => (x.Edges[0].IsBoundary || x.Edges[1].IsBoundary || x.Edges[2].IsBoundary));
+
+            //        if (boundaryElement != null)
+            //        {
+            //            // Global indexes of the boundary matrix
+            //            int k = V1.BoundaryIndex;
+            //            int j = V2.BoundaryIndex;
+
+            //            // Evaluate shape functions (in our case tent functions) using barycentric coordinates
+            //            double phiK_XQ = EvaluateTentFunction(boundaryElement, 0, xq, yq);
+            //            double psiJ_XQ = EvaluateTentFunction(boundaryElement, 0, xq, yq);
+
+            //            double lenght = boundaryEdge.Length;
+
+            //            // Quadrature: w * phi_k(xq) * psi_j(xq) * |x_a - x_b|
+            //            B[k, j] += weights[q] * phiK_XQ * psiJ_XQ * lenght;
+            //        }
+            //        else
+            //        {
+            //            throw new ArgumentNullException(nameof(boundaryElement), "Element argument was null during shape function evaluation!");
+            //        }
+            //    }
+            //}
+
 
 #if _LOGGING_
             Console.WriteLine("The boundary matrix:");
@@ -243,7 +322,7 @@ namespace EIT_SOLVER
             {
                 for (int j = 0; j < N_lambda; j++)
                 {
-                    Console.Write(B[i, j] + " ");
+                    Console.Write("{0}\t", B[i, j].ToString("F1"));
                 }
                 Console.WriteLine();
             }
@@ -259,6 +338,87 @@ namespace EIT_SOLVER
             Console.WriteLine("Total number of entries: {0}, Entries that are not 0: {1}", B.Length, nonZero);
 #endif
         }
+
+        private void CalculateLoadVector()
+        {
+            // Clear load vector
+            f = new double[N_lambda];
+
+            // Define quadrature parameters
+            double point1 = 0.5 - Math.Sqrt(3.0) / 6.0;
+            double point2 = 0.5 + Math.Sqrt(3.0) / 6.0;
+
+            double weight1 = 0.5;
+            double weight2 = 0.5;
+
+            double[] points = { point1, point2 };
+            double[] weights = { weight1, weight2 };
+
+            int quadraturePoints = points.Length;
+
+            foreach(Edge boundaryEdge in Mesh.BoundaryEdges)
+            {
+                Vertex V1 = boundaryEdge.Vertices[0];
+                Vertex V2 = boundaryEdge.Vertices[1];
+
+                for(int q = 0; q < quadraturePoints; q++)
+                {
+                    // Parametric point
+                    double xq = V1.X + points[q] * (V2.X - V1.X);
+                    double yq = V1.Y + points[q] * (V2.Y - V1.Y);
+
+                    // Evaluate boundary data at given point
+                    double boundaryData = EvaluateBoundaryData(Mesh.Elements.Find(x => (x.Edges[0].IsBoundary || x.Edges[1].IsBoundary || x.Edges[2].IsBoundary)), 0, xq, yq);
+
+                    // Evaluate the shape function for v1 on [v1,v2], which is (1 - t)
+                    // Evaluate the shape function for v2 on [v1,v2], which is t
+                    // Evaluate shape function in given point
+                    Element? boundaryElement = Mesh.Elements.Find(x => (x.V1 == V1 ||
+                                                                        x.V2 == V1 ||
+                                                                        x.V3 == V1 ||
+                                                                        x.V1 == V2 ||
+                                                                        x.V2 == V2 ||
+                                                                        x.V3 == V2));
+
+                    if (boundaryElement != null)
+                    {
+                        double shape1 = EvaluateTentFunction(boundaryElement, 0, xq, yq);
+                        double shape2 = EvaluateTentFunction(boundaryElement, 0, 1 - xq, 1 - yq);
+
+                        int j1 = V1.BoundaryIndex;
+                        if (j1 >= 0)
+                        {
+                            f[j1] += weights[q] * boundaryData * shape1 * boundaryEdge.Length;
+                        }
+
+                        int j2 = V2.BoundaryIndex;
+                        if (j2 >= 0)
+                        {
+                            f[j2] += weights[q] * boundaryData * shape2 * boundaryEdge.Length;
+                        }
+                    }
+                    else
+                    {
+                        throw new ArgumentNullException(nameof(boundaryElement), "Element argument was null during shape function evaluation!");
+                    }
+                }
+            }
+
+#if _LOGGING_
+            Console.WriteLine("The load vector f:");
+            for (int j = 0; j < N_lambda; j++)
+            {
+                Console.WriteLine($"f[{j}] = {f[j]}");
+            }
+#endif
+        }
+
+        // Evaluate boundary data at specified point, currently same functionality as in EvaluateTentFunction
+        private double EvaluateBoundaryData(Element? element, int i, double x, double y)
+        {
+            return EvaluateTentFunction(element, i, x, y);
+        }
+
 
         // Evaluate tent function at specified point using barycentric coordinates
         // If a point lies
@@ -301,71 +461,6 @@ namespace EIT_SOLVER
                 case 2: return gamma; // shape function for V3
                 default: throw new ArgumentOutOfRangeException(nameof(i), "i must be 0,1,2 for a linear triangle");
             }
-        }
-
-        private void CalculateLoadVector()
-        {
-            // Clear load vector
-            f = new double[N_lambda];
-
-            // Define quadrature parameters
-            double point1 = 0.5 - Math.Sqrt(3) / 6;
-            double point2 = 0.5 + Math.Sqrt(3) / 6;
-
-            double weight1 = 0.5;
-            double weight2 = 0.5;
-
-            double[] points = { point1, point2 };
-            double[] weights = { weight1, weight2 };
-
-            int quadraturePoints = points.Length;
-
-            foreach(Edge boundaryEdge in Mesh.BoundaryEdges)
-            {
-                Vertex V1 = boundaryEdge.Vertices[0];
-                Vertex V2 = boundaryEdge.Vertices[1];
-
-                for(int q = 0; q < quadraturePoints; q++)
-                {
-                    // Parametric point
-                    double xq = V1.X + points[q] * (V2.X - V1.X);
-                    double yq = V1.Y + points[q] * (V2.Y - V1.Y);
-
-                    // Evaluate boundary data at given point
-                    double boundaryData = EvaluateBoundaryData(Mesh.Elements.Find(x => (x.Edges[0].IsBoundary || x.Edges[1].IsBoundary || x.Edges[2].IsBoundary)), 0, xq, yq);
-
-                    // Evaluate the shape function for v1 on [v1,v2], which is (1 - t)
-                    // Evaluate the shape function for v2 on [v1,v2], which is t
-                    double shape1 = (1.0 - points[q]);
-                    double shape2 = points[q];
-
-                    int j1 = V1.BoundaryIndex;
-                    if(j1 >= 0)
-                    {
-                        f[j1] += weights[q] * boundaryData * shape1 * boundaryEdge.Length;
-                    }
-
-                    int j2 = V2.BoundaryIndex;
-                    if(j2 >= 0)
-                    {
-                        f[j2] += weights[q] * boundaryData * shape2 * boundaryEdge.Length;
-                    }
-                }
-            }
-
-#if _LOGGING_
-            Console.WriteLine("The load vector f:");
-            for (int j = 0; j < N_lambda; j++)
-            {
-                Console.WriteLine($"f[{j}] = {f[j]}");
-            }
-#endif
-        }
-
-        // Evaluate boundary data at specified point, currently same functionality as in EvaluateTentFunction
-        private double EvaluateBoundaryData(Element? element, int i, double x, double y)
-        {
-            return EvaluateTentFunction(element, i, x, y);
         }
 
         private void SolveSystem()
@@ -413,6 +508,8 @@ namespace EIT_SOLVER
                 rhsVec[N_phi + j] = f[j];
             }
 
+            bigA = bigA + 0.01 * DenseMatrix.CreateIdentity(size);
+
             // Now we have: bigA * [ alpha; gamma ] = rhsVec
 
             // Solve the system
@@ -443,8 +540,14 @@ namespace EIT_SOLVER
 #endif
         }
 
-        private void SolveSystemWithoutLagrnageMultipliers()
+        // Solve the system assuming strong Dirichlet data
+        private void SolveSystemWithoutLagrangeMultipliers()
         {
+            f = new double[N_phi];
+            for (int i = 0; i < N_phi; i++)
+                if(i < N_lambda)
+                    f[i] = BoundaryVoltages[i];
+
             var bigA = DenseMatrix.Create(N_phi, N_phi, 0.0);
             var rhsVec = DenseVector.Create(N_phi, 0.0);
 
@@ -452,7 +555,7 @@ namespace EIT_SOLVER
                 for (int j = 0; j < N_phi; j++)
                     bigA[i, j] = K[i, j];
 
-            for (int i = 0; i < N_lambda; i++)
+            for (int i = 0; i < N_phi; i++)
                 rhsVec[i] = f[i];
 
             var lu = bigA.LU();
@@ -472,6 +575,7 @@ namespace EIT_SOLVER
 #endif
         }
 
+        // Set the calulated potential values at the vertexes for visualization purposes
         private void SetPotentialValues()
         {
             // Clear previous potentials
@@ -482,8 +586,10 @@ namespace EIT_SOLVER
             for (int i = 0; i < Mesh.InternalVertices.Count; i++)
                 Mesh.InternalVertices[i].Potential = Alpha[i];
 
+            double avg = Alpha.Average();
+
             for (int i = 0; i < Mesh.BoundaryVertices.Count; i++)
-                Mesh.BoundaryVertices[i].Potential = Alpha[i];
+                Mesh.BoundaryVertices[i].Potential = avg;
 
             for(int i = 0; i < Mesh.Vertices.Count; i++)
             {
@@ -506,17 +612,30 @@ namespace EIT_SOLVER
 
         public void Solve()
         {
+#if _LOGGING_
+            Console.WriteLine("\nCalculating Stiffness Matrix!\n");
+#endif
+
             CalculateStiffnessMatrix();
+
+#if _LOGGING_
+            Console.WriteLine("\nCalculating Boundary Matrix!\n");
+#endif
 
             CalculateBoundaryMatrix();
 
+#if _LOGGING_
+            Console.WriteLine("\nCalculating Load Vector!\n");
+#endif
             CalculateLoadVector();
 
-            SolveSystemWithoutLagrnageMultipliers();
-
-            SetPotentialValues();
+#if _LOGGING_
+            Console.WriteLine("\nSolving the Saddle Point System!\n");
+#endif
+            //SolveSystemWithoutLagrangeMultipliers();
+            SolveSystem();
             
-            // SolveSystem();
+            SetPotentialValues();
         }
     }
 }

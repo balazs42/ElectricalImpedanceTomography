@@ -59,45 +59,24 @@ namespace EIT_SOLVER
 
             GradPhi = new double[3, 2];
 
-            // Grad phi1_x
-            GradPhi[0, 0] = Math.Abs(y2 - y3) / (2 * Area);
+            // ∇ϕ₁
+            GradPhi[0, 0] = (y2 - y3) / (2.0 * Area);  // d/dx
+            GradPhi[0, 1] = (x3 - x2) / (2.0 * Area);  // d/dy
 
-            // Grad ph1_y
-            GradPhi[0, 1] = Math.Abs(x3 - x2) / (2 * Area);
+            // ∇ϕ₂
+            GradPhi[1, 0] = (y3 - y1) / (2.0 * Area);
+            GradPhi[1, 1] = (x1 - x3) / (2.0 * Area);
 
-            // Grad phi2_x
-            GradPhi[1, 0] = Math.Abs(y3 - y1) / (2 * Area);
-            
-            // Grad phi2_y
-            GradPhi[1, 1] = Math.Abs(x1 - x3) / (2 * Area);
-
-            // Grad phi3_x
-            GradPhi[2, 0] = Math.Abs(y1 - y2) / (2 * Area);
-
-            // Grad phi3_y
-            GradPhi[2, 1] = Math.Abs(x2 - x1) / (2 * Area);
-
-            double[] sumGrad = new double[2];
-
-            sumGrad[0] = (GradPhi[0, 0] + GradPhi[1, 0] + GradPhi[2, 0]) / 3;
-            sumGrad[1] = (GradPhi[0, 1] + GradPhi[1, 1] + GradPhi[2, 1]) / 3;
-
-            sumGrad[0] /= (2 * Area);
-            sumGrad[1] /= (2 * Area);
-
-            GradPhi[0, 0] = 1 / (2 * Area);
-            GradPhi[0, 1] = 1 / (2 * Area);
-            GradPhi[1, 0] = 1 / (2 * Area);
-            GradPhi[1, 1] = 1 / (2 * Area);
-            GradPhi[2, 0] = 1 / (2 * Area);
-            GradPhi[2, 1] = 1 / (2 * Area);
+            // ∇ϕ₃
+            GradPhi[2, 0] = (y1 - y2) / (2.0 * Area);
+            GradPhi[2, 1] = (x2 - x1) / (2.0 * Area);
         }
 
         private void CalculateDotProducts()
         {
             for (int i = 0; i < 3; i++)
             {
-                for (int j = i; j < 3; j++)
+                for (int j = 0; j < 3; j++)
                 {
                     double dotPorduct = GradPhi[i, 0] * GradPhi[j, 0] +
                                         GradPhi[i, 1] * GradPhi[j, 1];

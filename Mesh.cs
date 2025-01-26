@@ -12,10 +12,10 @@ namespace EIT_SOLVER
 {
     public class Mesh
     {
-        public List<Vertex> Vertices { get; }
+        public List<Vertex> Vertices { get; private set; }
         public List<Vertex> InternalVertices { get; private set; }
         public List<Vertex> BoundaryVertices { get; private set; }
-        public List<Element> Elements { get; }
+        public List<Element> Elements { get; private set; }
         public List<Edge> BoundaryEdges { get; private set; }
         public List<Edge> InternalEdges { get; private set; }
         public double Density { get; set; } = 1.0;
@@ -41,18 +41,18 @@ namespace EIT_SOLVER
         // Delaunay triangulation using Triangle.NET
         public void GenerateMeshDelaunay(List<Vertex> inputVertices, double minAngle = 20.0)
         {
-            // Clear existing data
-            Vertices.Clear();
-            Elements.Clear();
-            BoundaryEdges.Clear();
-            InternalEdges.Clear();
-
             // Assign unique IDs to vertices if needed
             foreach (var v in inputVertices)
             {
                 v.X += Size;
                 v.Y += Size;
                 Vertices.Add(v);
+
+                // Adding globally indexed vertices
+                if(v.IsBoundary)
+                    BoundaryVertices.Add(v);
+                else
+                    InternalVertices.Add(v);
             }
 
             // Create a Triangle.NET Polygon
@@ -94,33 +94,38 @@ namespace EIT_SOLVER
                 {
                     Element element = new Element(v1, v2, v3);
                     Elements.Add(element);
+
+                    Edge[] elementEdges = element.Edges;
+
+                    foreach (Edge edge in elementEdges)
+                    {
+                        if (edge.IsBoundary)
+                            BoundaryEdges.Add(edge);
+                        else
+                            InternalEdges.Add(edge);
+                    }
                 }
             }
 
             // Identify boundary edges
-            IdentifyBoundaryEdges();
-
-            foreach(Vertex vertex in Vertices)
-            {
-                if (vertex.IsBoundary)
-                    BoundaryVertices.Add(vertex);
-                else
-                    InternalVertices.Add(vertex);
-            }
+            // IdentifyBoundaryEdges();
 
             // Assign global indexes to vertices
             AssignGlobalIndexes();
 
-            // Log the created mesh
-            LogMesh();
-
             // Assign neighbours
             AssignNeighbours();
+
+            // Log the created mesh
+            LogMesh();
         }
 
         // Generate 2d meshes
         public void GenerateMeshRectangular(double width, double height, double density = 0.1)
         {
+            // Reset lists
+            ResetLists();
+
             if(width > 20.0) width = 20.0;   // Limit the width for visualization
             if(height > 20.0) height = 20.0; // Limit the height for visualization
 
@@ -172,6 +177,9 @@ namespace EIT_SOLVER
         }
         public void GenerateMeshCircular(double radius, double density = 1.0)
         {
+            // Reset lists
+            ResetLists();
+
             List<Vertex> vertices = new List<Vertex>();
 
             // Add the central vertex
@@ -215,54 +223,14 @@ namespace EIT_SOLVER
             GenerateMeshDelaunay(vertices);
         }
 
-
-        private void IdentifyBoundaryEdges()
+        private void ResetLists()
         {
-            // Search for greates distance from middle point
-            double maxDist = 0.0;
-            foreach(var element in Elements)
-            {
-                double dist = Math.Max(element.V1.Distance(), element.V2.Distance());
-                dist = Math.Max(dist, element.V3.Distance());
-                if (dist > maxDist)
-                    maxDist = dist;
-            }
-
-
-            foreach (var element in Elements)
-            {
-                foreach(var edge in element.Edges)
-                {
-                    if (edge.IsBoundary)
-                    {
-                        var v1 = Vertices.FirstOrDefault(v => v.X == edge.Vertices[0].X && v.Y == edge.Vertices[0].Y);
-                        var v2 = Vertices.FirstOrDefault(v => v.X == edge.Vertices[1].X && v.Y == edge.Vertices[1].Y);
-
-                        if (v1 != null && v2 != null)
-                        {
-                            BoundaryEdges.Add(new Edge(v1, v2, true));
-                            
-                            // Setting corresponging element's edge as boundary edge
-                            Element? boundaryElement = Elements.Find(x => x.Edges[0] == edge || x.Edges[1] == edge || x.Edges[2] == edge);
-                            if (boundaryElement != null)
-                            {
-                                Edge boundaryEdge = boundaryElement.Edges.First(e => e.IsBoundary);
-                                boundaryEdge.IsBoundary = true;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        var v1 = Vertices.FirstOrDefault(v => v.X == edge.Vertices[0].X && v.Y == edge.Vertices[0].Y);
-                        var v2 = Vertices.FirstOrDefault(v => v.X == edge.Vertices[1].X && v.Y == edge.Vertices[1].Y);
-
-                        if (v1 != null && v2 != null)
-                        {
-                            InternalEdges.Add(new Edge(v1, v2, false));
-                        }
-                    }
-                }
-            }
+            Vertices = new List<Vertex>();
+            InternalVertices = new List<Vertex>();
+            BoundaryVertices = new List<Vertex>();
+            Elements = new List<Element>();
+            BoundaryEdges = new List<Edge>();
+            InternalEdges = new List<Edge>();
         }
 
         private List<Vertex> RemoveDuplicateVertices(List<Vertex> vertices, double tolerance = 1e-6)
@@ -281,12 +249,11 @@ namespace EIT_SOLVER
             for (int i = 0; i < N_phi; i++)       
                 InternalVertices[i].DomainIndex = i;
             
-            // 3) Assign boundary shape function indices
+            // Assign boundary shape function indices
             int N_lambda = BoundaryVertices.Count;
 
             for (int j = 0; j < N_lambda; j++)            
-                BoundaryVertices[j].BoundaryIndex = j;
-            
+                BoundaryVertices[j].BoundaryIndex = j; 
         }
 
         private void LogMesh()
@@ -297,7 +264,7 @@ namespace EIT_SOLVER
             // Iterate through each vertex and log their data
             foreach(Vertex vertex in Vertices)
             {
-                Console.WriteLine("Vertex {0}: X = {1}, Y = {2}, Domain Index = {3}, Boundary Index = {4}", i, vertex.X, vertex.Y, vertex.DomainIndex, vertex.BoundaryIndex);
+                Console.WriteLine("Vertex {0}: X = {1}, Y = {2}, Domain Index = {3}, Boundary Index = {4}, Num Neighbours = {5}", i, vertex.X, vertex.Y, vertex.DomainIndex, vertex.BoundaryIndex, vertex.Neighbours.Count());
                 i++;
             }
 
@@ -322,39 +289,30 @@ namespace EIT_SOLVER
 
         private void AssignNeighbours()
         {
-            int i = 0;
-            foreach(Vertex vertex in Vertices)
+            // Iterate through each vertex in the mesh
+            foreach (Vertex vertex in Vertices)
             {
-                i = 0;
-                foreach(Edge edge in InternalEdges)
+                // Set internal vertices neighbours accordingly
+                foreach (Edge edge in InternalEdges)
                 {
+                    // If e.v0.x == v.x and e.v0.y == v.y adding e.v1 as the neighbour
                     if (edge.Vertices[0].X == vertex.X && edge.Vertices[0].Y == vertex.Y)
-                    {
-                        vertex.Neighbours[i] = edge.Vertices[1];
-                        i++;
-                    }
+                        vertex.Neighbours.Add(edge.Vertices[1]);
                     else if (edge.Vertices[1].X == vertex.X && edge.Vertices[1].Y == vertex.Y)
-                    {
-                        vertex.Neighbours[i] = edge.Vertices[0];
-                        i++;
-                    }
+                        vertex.Neighbours.Add(edge.Vertices[0]);
                 }
-                i = 0;
+
+                // Set boundary vertices neighbours accordingly
                 foreach (Edge edge in BoundaryEdges)
                 {
                     if (edge.Vertices[0].X == vertex.X && edge.Vertices[0].Y == vertex.Y)
-                    {
-                        vertex.Neighbours[i] = edge.Vertices[1];
-                        i++;
-                    }
+                        vertex.Neighbours.Add(edge.Vertices[1]);
                     else if (edge.Vertices[1].X == vertex.X && edge.Vertices[1].Y == vertex.Y)
-                    {
-                        vertex.Neighbours[i] = edge.Vertices[0];
-                        i++;
-                    }
+                        vertex.Neighbours.Add(edge.Vertices[0]);
                 }
 
-            }
+                vertex.Neighbours = RemoveDuplicateVertices(vertex.Neighbours);
+            } 
         }
     }
 }

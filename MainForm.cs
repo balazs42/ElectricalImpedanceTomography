@@ -68,11 +68,13 @@ namespace EIT_SOLVER
         // Event handler for solve button
         private void ButtonSolve_Click(object sender, EventArgs e)
         {
-            double[] boundaryMeasurements = new double[mesh.BoundaryEdges.Count];
+            double[] boundaryMeasurements = new double[mesh.BoundaryVertices.Count];
 
             // Circular inhomogenity in the middle enduces homogen boundary measurements in an ideal case
             for (int i = 0; i < boundaryMeasurements.Count(); i++)
                 boundaryMeasurements[i] = 1.0;
+
+            //boundaryMeasurements[mesh.BoundaryVertices.Count - 1] = 0.0;
 
             ForwardSolver forwardSolver = new ForwardSolver(mesh, boundaryMeasurements);
 

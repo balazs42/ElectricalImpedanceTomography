@@ -12,19 +12,19 @@ namespace EIT_SOLVER
     {
         public double X { get; set; }
         public double Y { get; set; }
-        public bool IsBoundary { get; }
+        public bool IsBoundary { get; set; }
         public bool IsMeasurement { get; set; } = false;
         public int DomainIndex { get; set; } = -1;
         public int BoundaryIndex { get; set; } = -1;
         public double Potential { get; set; } = -10000;
-        public Vertex[] Neighbours { get; set; }
+        public List<Vertex> Neighbours { get; set; }
 
         public Vertex(double x, double y, bool isBoundary)
         {
             X = x;
             Y = y;
             IsBoundary = isBoundary;
-            Neighbours = new Vertex[30];
+            Neighbours = new List<Vertex>();
         }
 
         public Vertex(double x, double y, bool isBoundary, bool isMeasurement)
@@ -32,6 +32,8 @@ namespace EIT_SOLVER
             X = x;
             Y = y;
             IsBoundary = isBoundary;
+            Neighbours = new List<Vertex>();
+
             if (isBoundary && isMeasurement)
                 isMeasurement = true;
             else
