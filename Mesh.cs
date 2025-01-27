@@ -34,6 +34,10 @@ namespace EIT_SOLVER
         {
             Vertices = vertices;
             Elements = elements;
+            InternalVertices = new List<Vertex>();
+            BoundaryVertices = new List<Vertex>();
+            BoundaryEdges = new List<Edge>();
+            InternalEdges = new List<Edge>();
         }
 
         // Generate mesh using Delaunay triangulation
@@ -47,9 +51,13 @@ namespace EIT_SOLVER
                 v.X += Size;
                 v.Y += Size;
                 Vertices.Add(v);
-
+                /*
+                 *
+                 * Denoting Boundary And Internal Vertices
+                 * 
+                 */
                 // Adding globally indexed vertices
-                if(v.IsBoundary)
+                if (v.IsBoundary)
                     BoundaryVertices.Add(v);
                 else
                     InternalVertices.Add(v);
@@ -92,10 +100,22 @@ namespace EIT_SOLVER
 
                 if (v1 != null && v2 != null && v3 != null)
                 {
+                    /*
+                     *
+                     * Adding Elements to the mesh
+                     * 
+                     */
+
                     Element element = new Element(v1, v2, v3);
                     Elements.Add(element);
 
                     Edge[] elementEdges = element.Edges;
+
+                    /*
+                     *
+                     * Denoting Boundary And Internal Edges to the mesh
+                     * 
+                     */
 
                     foreach (Edge edge in elementEdges)
                     {
@@ -115,6 +135,9 @@ namespace EIT_SOLVER
 
             // Assign neighbours
             AssignNeighbours();
+
+            // Assign neigbouring edges to vertices
+            AssignNeighbouringEdges();
 
             // Log the created mesh
             LogMesh();
@@ -243,6 +266,12 @@ namespace EIT_SOLVER
 
         private void AssignGlobalIndexes()
         {
+            /*
+             *
+             * Assigning Global Indexes to Vertices in the Mesh
+             * 
+             */
+
             // Assign domain (bulk) shape function indices
             int N_phi = InternalVertices.Count;
 
@@ -289,6 +318,11 @@ namespace EIT_SOLVER
 
         private void AssignNeighbours()
         {
+            /*
+             *
+             * Assigning Neighbours to Vertices in the Mesh
+             * 
+             */
             // Iterate through each vertex in the mesh
             foreach (Vertex vertex in Vertices)
             {
@@ -313,6 +347,33 @@ namespace EIT_SOLVER
 
                 vertex.Neighbours = RemoveDuplicateVertices(vertex.Neighbours);
             } 
+        }
+
+        private void AssignNeighbouringEdges()
+        {
+            /*
+             *
+             * Assigning Neighbouring Edges to Vertices in the Mesh
+             * 
+             */
+            foreach (Vertex vertex in Vertices)
+            {
+                foreach (Edge edge in InternalEdges)
+                {
+                    if (edge.Vertices[0].X == vertex.X && edge.Vertices[0].Y == vertex.Y)
+                        vertex.Edges.Add(edge);
+                    else if (edge.Vertices[1].X == vertex.X && edge.Vertices[1].Y == vertex.Y)
+                        vertex.Edges.Add(edge);
+                }
+
+                foreach (Edge edge in BoundaryEdges)
+                {
+                    if (edge.Vertices[0].X == vertex.X && edge.Vertices[0].Y == vertex.Y)
+                        vertex.Edges.Add(edge);
+                    else if (edge.Vertices[1].X == vertex.X && edge.Vertices[1].Y == vertex.Y)
+                        vertex.Edges.Add(edge);
+                }
+            }
         }
     }
 }

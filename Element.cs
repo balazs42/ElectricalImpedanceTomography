@@ -85,6 +85,15 @@ namespace EIT_SOLVER
                 }
             }
         }
+
+        public int GetEdgeIndex(Edge whatEdge)
+        {
+            for(int i = 0; i < Edges.Length; i++)
+                if (Edges[i].Equals(whatEdge))
+                    return i;
+  
+            return -1;
+        }
     }
 }
 

@@ -18,6 +18,7 @@ namespace EIT_SOLVER
         public int BoundaryIndex { get; set; } = -1;
         public double Potential { get; set; } = -10000;
         public List<Vertex> Neighbours { get; set; }
+        public List<Edge> Edges { get; set; }
 
         public Vertex(double x, double y, bool isBoundary)
         {
@@ -25,6 +26,7 @@ namespace EIT_SOLVER
             Y = y;
             IsBoundary = isBoundary;
             Neighbours = new List<Vertex>();
+            Edges = new List<Edge>();
         }
 
         public Vertex(double x, double y, bool isBoundary, bool isMeasurement)
@@ -33,6 +35,7 @@ namespace EIT_SOLVER
             Y = y;
             IsBoundary = isBoundary;
             Neighbours = new List<Vertex>();
+            Edges = new List<Edge>();
 
             if (isBoundary && isMeasurement)
                 isMeasurement = true;
@@ -44,6 +47,29 @@ namespace EIT_SOLVER
         public double Distance()
         {
             return Math.Sqrt(X * X + Y * Y);
+        }
+
+        public double Distance(Vertex v)
+        {
+            return Math.Sqrt(Math.Pow(X - v.X, 2) + Math.Pow(Y - v.Y, 2));
+        }
+
+        public double Distance(double x, double y)
+        {
+            return Math.Sqrt(Math.Pow(X - x, 2) + Math.Pow(Y - y, 2));
+        }
+
+        public int GetEdgeIndex(Edge whatEdge)
+        {
+            Vertex v1 = whatEdge.Vertices[0];
+            Vertex v2 = whatEdge.Vertices[1];
+
+            for (int i = 0; i < Edges.Count(); i++)
+                if ((Edges[i].Vertices[0] == v1 && Edges[i].Vertices[0] == v2) ||
+                    (Edges[i].Vertices[0] == v2 && Edges[i].Vertices[1] == v1))
+                    return i;
+
+            return -1;
         }
     }
 }

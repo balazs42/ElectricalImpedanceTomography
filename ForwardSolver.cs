@@ -4,6 +4,7 @@
 using EIT_SOLVER;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
+using MongoDB.Bson.Serialization.Conventions;
 using System;
 using System.Reflection.Metadata.Ecma335;
 using System.Windows.Forms.VisualStyles;
@@ -29,6 +30,7 @@ namespace EIT_SOLVER
             Mesh = mesh;
             BoundaryVoltages = boundaryVoltages;
 
+            // Global counts of unknowns
             N_phi = Mesh.InternalVertices.Count();
             N_lambda = Mesh.BoundaryVertices.Count();
 
@@ -89,48 +91,6 @@ namespace EIT_SOLVER
         {
             // Clear the stiffness matrix
             K = new double[N_phi, N_phi];
-
-            //foreach(Vertex vertex in Mesh.Vertices)
-            //{
-            //    foreach(Vertex neighbourVertex in vertex.Neighbours)
-            //    {
-            //        Element? element = Mesh.Elements.Find(x => x.V1 == vertex || x.V2 == vertex || x.V3 == vertex);
-
-            //        if (element != null)
-            //        {
-            //            if (vertex.DomainIndex == -1 || element.V1.DomainIndex == -1) continue;
-
-            //            double sigma = element.Sigma;
-            //            double area = element.Area;
-
-            //            if (element.V1 == neighbourVertex)
-            //            {
-            //                double[,] gradPhi = element.GradPhi;
-
-            //                double dotProd = (gradPhi[0, 0] * gradPhi[1, 0] + gradPhi[0, 1] * gradPhi[1, 1]);
-            //                K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
-
-            //            }
-            //            else if (element.V2 == neighbourVertex)
-            //            {
-            //                double[,] gradPhi = element.GradPhi;
-
-            //                double dotProd = (gradPhi[1, 0] * gradPhi[1, 1] + gradPhi[2, 0] * gradPhi[2, 1]);
-            //                K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
-
-            //            }
-            //            else if (element.V3 == neighbourVertex)
-            //            {
-            //                double[,] gradPhi = element.GradPhi;
-
-            //                double dotProd = (gradPhi[0, 0] * gradPhi[2, 0] + gradPhi[0, 1] * gradPhi[2, 1]);
-            //                K[vertex.DomainIndex, element.V1.DomainIndex] += sigma * area * dotProd;
-            //            }
-            //        }
-
-            //    }
-            //}
-
 
             // Get each local stiffness matrix and add it to the global stiffness matrix
             foreach (Element element in Mesh.Elements)
@@ -225,6 +185,7 @@ namespace EIT_SOLVER
                     }
                 }
 
+                // Count how many neighbours we found (1-2)
                 int numbNeighbours = 0;
                 for(int i = 0; i < neighbourInternals.Length; i++)
                 {
@@ -247,10 +208,11 @@ namespace EIT_SOLVER
                         double xq = boundaryVertex.X + points[q] * (internalNeighbour.X - boundaryVertex.X);
                         double yq = boundaryVertex.Y + points[q] * (internalNeighbour.Y - boundaryVertex.Y);
 
-                        // Evaluate shape function in given point
-                        Element? boundaryElement = Mesh.Elements.Find(x => (x.V1 == boundaryVertex ||
-                                                                            x.V2 == boundaryVertex ||
-                                                                            x.V3 == boundaryVertex || 
+                        // Search for element containing boundaryVertex & internalNeighbour vertices
+                        Element? boundaryElement = Mesh.Elements.Find(x => ((x.V1 == boundaryVertex   ||
+                                                                            x.V2 == boundaryVertex    ||
+                                                                            x.V3 == boundaryVertex)    
+                                                                            )&&(
                                                                             x.V1 == internalNeighbour || 
                                                                             x.V2 == internalNeighbour || 
                                                                             x.V3 == internalNeighbour));
@@ -261,9 +223,12 @@ namespace EIT_SOLVER
                             int j = boundaryVertex.BoundaryIndex;
                             int k = internalNeighbour.DomainIndex;
 
-                            // Evaluate shape functions (in our case tent functions) using barycentric coordinates
-                            double phiK_XQ = EvaluateTentFunction(boundaryElement, 0, xq, yq);
-                            double psiJ_XQ = EvaluateTentFunction(boundaryElement, 0, xq, yq);
+                            // Evaluate at which edge the boundary vertex and internal neighbour are connected with at the boundary element
+                            int modeOfEvaluation = boundaryElement.GetEdgeIndex(boundaryElement.Edges.First(x => x.AreVerticesEqual(boundaryVertex, internalNeighbour)));
+
+                            // Evaluate shapfe functions at the corresponding points
+                            double phiK_XQ = EvaluateTentFunction(boundaryElement, modeOfEvaluation, xq, yq);
+                            double psiJ_XQ = EvaluateTentFunction(boundaryElement, modeOfEvaluation, internalNeighbour.X - xq, internalNeighbour.Y - yq);
 
                             double lenght = edge.Length;
 
@@ -356,50 +321,42 @@ namespace EIT_SOLVER
 
             int quadraturePoints = points.Length;
 
-            foreach(Edge boundaryEdge in Mesh.BoundaryEdges)
+            foreach (Edge boundaryEdge in Mesh.BoundaryEdges)
             {
                 Vertex V1 = boundaryEdge.Vertices[0];
                 Vertex V2 = boundaryEdge.Vertices[1];
 
-                for(int q = 0; q < quadraturePoints; q++)
+                // Find which element contains the edge
+                Element? element = Mesh.Elements.Find(x => ((x.V1 == V1 || x.V2 == V1 || x.V3 == V1) && (x.V1 == V2 || x.V2 == V2 || x.V3 == V2)));
+
+                if (element == null)
+                    throw new ArgumentNullException(nameof(element), "Element argument was null during boundary data evaluation!");
+
+                int modeOfEvaluation = element.GetEdgeIndex(boundaryEdge);
+
+                for (int q = 0; q < quadraturePoints; q++)
                 {
                     // Parametric point
                     double xq = V1.X + points[q] * (V2.X - V1.X);
                     double yq = V1.Y + points[q] * (V2.Y - V1.Y);
 
                     // Evaluate boundary data at given point
-                    double boundaryData = EvaluateBoundaryData(Mesh.Elements.Find(x => (x.Edges[0].IsBoundary || x.Edges[1].IsBoundary || x.Edges[2].IsBoundary)), 0, xq, yq);
-
-                    // Evaluate the shape function for v1 on [v1,v2], which is (1 - t)
-                    // Evaluate the shape function for v2 on [v1,v2], which is t
-                    // Evaluate shape function in given point
-                    Element? boundaryElement = Mesh.Elements.Find(x => (x.V1 == V1 ||
-                                                                        x.V2 == V1 ||
-                                                                        x.V3 == V1 ||
-                                                                        x.V1 == V2 ||
-                                                                        x.V2 == V2 ||
-                                                                        x.V3 == V2));
-
-                    if (boundaryElement != null)
+                    if (element != null)
                     {
-                        double shape1 = EvaluateTentFunction(boundaryElement, 0, xq, yq);
-                        double shape2 = EvaluateTentFunction(boundaryElement, 0, 1 - xq, 1 - yq);
+                        double boundaryData = EvaluateBoundaryData(element, modeOfEvaluation, xq, yq);
+                        double shape1 = EvaluateTentFunction(element, modeOfEvaluation, xq, yq);
 
                         int j1 = V1.BoundaryIndex;
                         if (j1 >= 0)
-                        {
                             f[j1] += weights[q] * boundaryData * shape1 * boundaryEdge.Length;
-                        }
 
                         int j2 = V2.BoundaryIndex;
                         if (j2 >= 0)
-                        {
-                            f[j2] += weights[q] * boundaryData * shape2 * boundaryEdge.Length;
-                        }
+                            f[j2] += weights[q] * boundaryData * shape1 * boundaryEdge.Length;
                     }
                     else
                     {
-                        throw new ArgumentNullException(nameof(boundaryElement), "Element argument was null during shape function evaluation!");
+                        throw new ArgumentNullException(nameof(element), "Element argument was null during shape function evaluation!");
                     }
                 }
             }
@@ -422,7 +379,7 @@ namespace EIT_SOLVER
 
         // Evaluate tent function at specified point using barycentric coordinates
         // If a point lies
-        public double EvaluateTentFunction(Element? element, int i, double x, double y)
+        public double EvaluateTentFunction(Element? element, int numMode, double x, double y)
         {
             if (element == null)
                 throw new ArgumentNullException(nameof(element), "Can not evaluate shape function, null reference.");
@@ -436,17 +393,13 @@ namespace EIT_SOLVER
 
             // Compute sub-areas
             // A1 = area( (x,y), V2, V3 )
-            double A1 = 0.5 * Math.Abs(
-                x * (y2 - y3) + x2 * (y3 - y) + x3 * (y - y2)
-            );
+            double A1 = 0.5 * Math.Abs(x * (y2 - y3) + x2 * (y3 - y) + x3 * (y - y2));
+
             // A2 = area( (x,y), V3, V1 )
-            double A2 = 0.5 * Math.Abs(
-                x * (y3 - y1) + x3 * (y1 - y) + x1 * (y - y3)
-            );
+            double A2 = 0.5 * Math.Abs(x * (y3 - y1) + x3 * (y1 - y) + x1 * (y - y3));
+
             // A3 = area( (x,y), V1, V2 )
-            double A3 = 0.5 * Math.Abs(
-                x * (y1 - y2) + x1 * (y2 - y) + x2 * (y - y1)
-            );
+            double A3 = 0.5 * Math.Abs(x * (y1 - y2) + x1 * (y2 - y) + x2 * (y - y1));
 
             // Barycentric coords: alpha = A1/areaT, beta = A2/areaT, gamma = A3/areaT
             double alpha = A1 / areaT;
@@ -454,12 +407,12 @@ namespace EIT_SOLVER
             double gamma = A3 / areaT;
 
             // The shape function for node i is just alpha, beta, or gamma
-            switch (i)
+            switch (numMode)
             {
                 case 0: return alpha; // shape function for V1
                 case 1: return beta;  // shape function for V2
                 case 2: return gamma; // shape function for V3
-                default: throw new ArgumentOutOfRangeException(nameof(i), "i must be 0,1,2 for a linear triangle");
+                default: throw new ArgumentOutOfRangeException(nameof(numMode), "Value of i must be 0,1,2 for a linear triangle!");
             }
         }
 
@@ -589,7 +542,7 @@ namespace EIT_SOLVER
             double avg = Alpha.Average();
 
             for (int i = 0; i < Mesh.BoundaryVertices.Count; i++)
-                Mesh.BoundaryVertices[i].Potential = avg;
+                Mesh.BoundaryVertices[i].Potential = Gamma[i];
 
             for(int i = 0; i < Mesh.Vertices.Count; i++)
             {

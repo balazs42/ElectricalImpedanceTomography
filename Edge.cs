@@ -32,5 +32,10 @@ namespace EIT_SOLVER
             Length = Math.Sqrt(Math.Pow((Vertices[0].X - Vertices[1].X), 2) +
                                Math.Pow((Vertices[0].Y - Vertices[1].Y), 2));
         }
+
+        public bool AreVerticesEqual(Vertex v1, Vertex v2)
+        {
+            return (Vertices[0] == v1 && Vertices[1] == v2) || (Vertices[0] == v2 && Vertices[1] == v1);
+        }
     }
 }
