@@ -56,7 +56,7 @@ Contributions are welcome! If you would like to contribute, please submit a pull
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
 
 ## Known Errors
-Mesh generation is kind of messed up if not using powers of 2. Assuming strong Dirichlet data (solving withour Lagrange multipliers) solves the system correctly, meaning the stiffness matrix is correctly assembled, and the produced potential map is consistent with other numerical solvers. When using lagrange multipliers (e.g., solving with LU, SVD, CG) the block saddle-point system is solved, and the reuslting potential distributions is quiet bad. 
+Mesh generation is kind of messed up if not using powers of 2. Assuming strong Dirichlet data (solving withour Lagrange multipliers) solves the system correctly, meaning the stiffness matrix is correctly assembled, and the produced potential map is consistent with other numerical solvers. When using lagrange multipliers (e.g., solving with LU, SVD, CG) the block saddle-point system is solved, and the reuslting potential distributions is quiet bad.
 
 ## Currently working on:
-GMRES method to solve the block saddle-point system, measurement structures, and patterns and the inverse solver using the adjoint state method approach.
+GMRES method to solve the block saddle-point system (maybe that helps stability with Lagrange multipliers), measurement structures, and patterns and the inverse solver using the adjoint state method approach.
