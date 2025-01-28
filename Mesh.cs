@@ -5,8 +5,6 @@ using MIConvexHull;
 using System.Linq;
 using TriangleNet.Geometry;
 using TriangleNet.Meshing;
-using System.Windows.Forms.VisualStyles;
-using MathNet.Numerics.Optimization;
 
 namespace EIT_SOLVER
 {
@@ -94,6 +92,10 @@ namespace EIT_SOLVER
                 var v2 = Vertices.FirstOrDefault(v => v.X == tri.GetVertex(1).X && v.Y == tri.GetVertex(1).Y);
                 var v3 = Vertices.FirstOrDefault(v => v.X == tri.GetVertex(2).X && v.Y == tri.GetVertex(2).Y);
                 
+                if(v1 == null || v2 == null || v3 == null)
+                    throw new ArgumentNullException("Vertex not found in the list of vertices");
+
+
                 Vertex V1 = new Vertex(v1.X + Size, v1.Y + Size, false);
                 Vertex V2 = new Vertex(v2.X + Size, v2.Y + Size, false); 
                 Vertex V3 = new Vertex(v3.X + Size, v3.Y + Size, false); 
@@ -293,7 +295,7 @@ namespace EIT_SOLVER
             // Iterate through each vertex and log their data
             foreach(Vertex vertex in Vertices)
             {
-                Console.WriteLine("Vertex {0}: X = {1}, Y = {2}, Domain Index = {3}, Boundary Index = {4}, Num Neighbours = {5}", i, vertex.X, vertex.Y, vertex.DomainIndex, vertex.BoundaryIndex, vertex.Neighbours.Count());
+                Console.WriteLine("Vertex {0}: X = {1}\t Y = {2}\t Domain Index = {3}\t Boundary Index = {4}\t Num Neighbours = {5}", i, vertex.X.ToString("F2"), vertex.Y.ToString("F2"), vertex.DomainIndex, vertex.BoundaryIndex, vertex.Neighbours.Count());
                 i++;
             }
 

@@ -21,9 +21,13 @@ namespace EIT_SOLVER
             // to demonstrate where the console output is going
             int argCount = args == null ? 0 : args.Length;
             Console.WriteLine("nYou specified {0} arguments:", argCount);
-            for (int i = 0; i < argCount; i++)
+            if(argCount > 0)
             {
-                Console.WriteLine("  {0}", args[i]);
+                for (int i = 0; i < argCount; i++)
+                {
+                    if (args[i] != null)
+                        Console.WriteLine("  {0}", args[i]);
+                }
             }
 
             Application.EnableVisualStyles();

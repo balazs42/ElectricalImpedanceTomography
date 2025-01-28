@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MIConvexHull;
 
 namespace EIT_SOLVER
 {
@@ -16,7 +15,7 @@ namespace EIT_SOLVER
         public bool IsMeasurement { get; set; } = false;
         public int DomainIndex { get; set; } = -1;
         public int BoundaryIndex { get; set; } = -1;
-        public double Potential { get; set; } = -10000;
+        public double Potential { get; set; } = 0;
         public List<Vertex> Neighbours { get; set; }
         public List<Edge> Edges { get; set; }
 

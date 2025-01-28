@@ -29,9 +29,19 @@ namespace EIT_SOLVER
             Edges[1] = (v1.IsBoundary && v3.IsBoundary) ? new Edge(v1, v3, true) : new Edge(v1, v3, false);
             Edges[2] = (v2.IsBoundary && v3.IsBoundary) ? new Edge(v2, v3, true) : new Edge(v2, v3, false);
 
+            GradPhi = new double[3, 2];
+
+            // Calculate area of given element
             CalculateArea();
+
+            // Calculate shape function gradients on the given element
             CalculateGradients();
+
+            // Calculate the dot product of the gradients of shape functions on given element
             CalculateDotProducts();
+
+            if (GradPhi == null || DotProducts == null)
+                throw new InvalidDataException("GradPhi or DotProducts was null during element initialization, check code!");
         }
 
         private void InitializeEdges()
