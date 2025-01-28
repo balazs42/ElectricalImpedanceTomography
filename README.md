@@ -28,7 +28,7 @@ This repository contains a project for solving Electrical Impedance Tomography (
 ## How to Use
 1. Run the application to launch the main interface.
 2. Generate a mesh:
-- Select either **Rectangular Mesh** or **Circular Mesh** and set the density in the input field.
+- Select either **Rectangular Mesh** or **Circular Mesh** and set the density (working with 0.5, 1, 2, 4, 8) in the input field.
 3. Choose simulation parameters:
 - Select a simulation type (e.g., symmetric, asymmetric, or noisy boundary conditions).
 - Specify the regularization parameter if required by the solver.
@@ -54,3 +54,9 @@ Contributions are welcome! If you would like to contribute, please submit a pull
 
 ## License
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
+
+## Known Errors
+Mesh generation is kind of messed up if not using powers of 2. Assuming strong Dirichlet data (solving withour Lagrange multipliers) solves the system correctly, meaning the stiffness matrix is correctly assembled, and the produced potential map is consistent with other numerical solvers. When using lagrange multipliers (e.g., solving with LU, SVD, CG) the block saddle-point system is solved, and the reuslting potential distributions is quiet bad. 
+
+## Currently working on:
+GMRES method to solve the block saddle-point system, measurement structures, and patterns and the inverse solver using the adjoint state method approach.
