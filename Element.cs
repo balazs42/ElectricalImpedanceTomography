@@ -18,12 +18,15 @@ namespace EIT_SOLVER
         public double[,] GradPhi { get; private set; } // Gradients of shape functions
         public double Sigma { get; set; } = 1.0; // Conductivity
         public double[,] DotProducts { get; private set; } = new double[3, 3];
+        public int Id { get; set; } = -1;
 
-        public Element(Vertex v1, Vertex v2, Vertex v3)
+        public Element(Vertex v1, Vertex v2, Vertex v3, int id)
         {
             V1 = v1;
             V2 = v2;
             V3 = v3;
+
+            Id = id;
 
             Edges[0] = (v1.IsBoundary && v2.IsBoundary) ? new Edge(v1, v2, true) : new Edge(v1, v2, false);
             Edges[1] = (v1.IsBoundary && v3.IsBoundary) ? new Edge(v1, v3, true) : new Edge(v1, v3, false);

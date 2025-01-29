@@ -1,5 +1,5 @@
 ﻿// ForwardSolver.cs 
-//#define _LOGGING_
+#define _LOGGING_
 
 using EIT_SOLVER;
 using MathNet.Numerics.LinearAlgebra;
@@ -24,6 +24,8 @@ namespace EIT_SOLVER
         private double[] Gamma; // Coefficients for λ
         private int N_phi { get; set; } = 0;    // Number of φ coefficients
         private int N_lambda { get; set; } = 0; // Number of λ coefficients
+        private double[,] A; // System matrix
+        private double[] b; // System vector
         public double Theta { get; set; } = 1.0; // Regularization parameter
         public Measurement Measurement;
         public DenoisingMethod DenoisingMethod;
@@ -73,24 +75,8 @@ namespace EIT_SOLVER
             double[,] dotProducts = element.DotProducts;
 
             for (int i = 0; i < 3; i++)
-            {
                 for(int j = 0; j < 3; j++)
-                {
-                    // K_ij = \sigma_T |T| [\grad(\phi_i^T \cdot \grad(\phi_j^T))]
-                    localStiffnessMatrix[i, j] = sigma * area * dotProducts[i, j];
-                }
-            }
-
-#if _LOGGING_
-            Console.Write("[");
-            for(int i = 0; i < 3;i++)
-            {
-                for (int j = 0; j < 3; j++)
-                    Console.Write("{0} \t", localStiffnessMatrix[i, j]);
-                Console.WriteLine();
-            }
-            Console.WriteLine("]");
-#endif
+                    localStiffnessMatrix[i, j] = sigma * area * dotProducts[i, j]; // K_ij^e = \sigma_T |T| [\grad(\phi_i^T \cdot \grad(\phi_j^T))]
 
             return localStiffnessMatrix;
         }
@@ -134,31 +120,31 @@ namespace EIT_SOLVER
                 }
             }
 
-#if _LOGGING_
-            Console.WriteLine("The stiffness matrix:");
-            for (int i = 0; i < N_phi; i++)
-            {
-                for (int j = 0; j < N_phi; j++)
-                {
-                    if (K[i, j] == 0)
-                        Console.Write(" " + K[i, j].ToString("F2") + " "); //Console.Write("0 ");// 
-                    else
-                        Console.Write(K[i, j].ToString("F2") + " ");//Console.Write("1 ");//
+//#if _LOGGING_
+//            Console.WriteLine("The stiffness matrix:");
+//            for (int i = 0; i < N_phi; i++)
+//            {
+//                for (int j = 0; j < N_phi; j++)
+//                {
+//                    if (K[i, j] == 0)
+//                        Console.Write(" " + K[i, j].ToString("F2") + " "); //Console.Write("0 ");// 
+//                    else
+//                        Console.Write(K[i, j].ToString("F2") + " ");//Console.Write("1 ");//
 
-                }
-                Console.Write(";");
-                Console.WriteLine();
-            }
-            int nonZero = 0;
-            for (int i = 0; i < N_phi; i++)
-            {
-                for (int j = 0; j < N_phi; j++)
-                    if (K[i, j] != 0.0)
-                        nonZero++;
-            }
+//                }
+//                Console.Write(";");
+//                Console.WriteLine();
+//            }
+//            int nonZero = 0;
+//            for (int i = 0; i < N_phi; i++)
+//            {
+//                for (int j = 0; j < N_phi; j++)
+//                    if (K[i, j] != 0.0)
+//                        nonZero++;
+//            }
 
-            Console.WriteLine("Total number of entries: {0}, Entries that are not 0: {1}", K.Length, nonZero);
-#endif 
+//            Console.WriteLine("Total number of entries: {0}, Entries that are not 0: {1}", K.Length, nonZero);
+//#endif 
         }
 
         private void CalculateBoundaryMatrix()
@@ -217,13 +203,13 @@ namespace EIT_SOLVER
                         double yq = boundaryVertex.Y + points[q] * (internalNeighbour.Y - boundaryVertex.Y);
 
                         // Search for element containing boundaryVertex & internalNeighbour vertices
-                        Element? boundaryElement = Mesh.Elements.Find(x => ((x.V1 == boundaryVertex   ||
-                                                                            x.V2 == boundaryVertex    ||
-                                                                            x.V3 == boundaryVertex)    
-                                                                            )&&(
-                                                                            x.V1 == internalNeighbour || 
-                                                                            x.V2 == internalNeighbour || 
-                                                                            x.V3 == internalNeighbour));
+                        Element? boundaryElement = Mesh.Elements.Find(x => ((x.V1 == boundaryVertex    ||
+                                                                             x.V2 == boundaryVertex    ||
+                                                                             x.V3 == boundaryVertex)    
+                                                                             )&&(
+                                                                             x.V1 == internalNeighbour || 
+                                                                             x.V2 == internalNeighbour || 
+                                                                             x.V3 == internalNeighbour));
 
                         if (boundaryElement != null)
                         {
@@ -237,7 +223,7 @@ namespace EIT_SOLVER
                             // Evaluate shapfe functions at the corresponding points
 
                             // phi_K
-                            double phiK_XQ = EvaluateTentFunction(boundaryElement, modeOfEvaluation, xq, yq);
+                            double phiK_XQ = EvaluateShapeFunction(boundaryElement, modeOfEvaluation, xq, yq);
                             double psiJ_XQ = EvaluateBoundaryShapeFunction(boundaryElement, modeOfEvaluation, internalNeighbour.X - xq, internalNeighbour.Y - yq);
 
                             double lenght = edge.Length;
@@ -258,19 +244,15 @@ namespace EIT_SOLVER
             for (int i = 0; i < N_phi; i++)
             {
                 for (int j = 0; j < N_lambda; j++)
-                {
-                    Console.Write("{0}\t", B[i, j].ToString("F1"));
-                }
+                    Console.Write("{0} ", B[i, j].ToString("F1"));
                 Console.WriteLine();
             }
 
             int nonZero = 0;
             for(int i = 0; i < N_phi; i++)
-            {
                 for (int j = 0; j < N_lambda; j++)
                     if (B[i, j] != 0.0)
                         nonZero++;
-            }
 
             Console.WriteLine("Total number of entries: {0}, Entries that are not 0: {1}", B.Length, nonZero);
 #endif
@@ -357,9 +339,7 @@ namespace EIT_SOLVER
 #if _LOGGING_
             Console.WriteLine("The load vector f:");
             for (int j = 0; j < N_lambda; j++)
-            {
-                Console.WriteLine($"f[{j}] = {f[j]}");
-            }
+                Console.WriteLine($"f[{j}] = {f[j]:F2}");
 #endif
         }
 
@@ -370,6 +350,11 @@ namespace EIT_SOLVER
             // For linear elements, boundary shape functions may coincide with domain shape functions restricted to the boundary
             // Hence, this could be the same as EvaluateTentFunction, but clarity is crucial
             return EvaluateTentFunction(element, boundaryMode, x, y);
+        }
+
+        private double EvaluateShapeFunction(Element? element, int numMOde, double x, double y)
+        {
+            return EvaluateTentFunction(element, numMOde, x, y);
         }
 
         // Evaluate tent function at specified point using barycentric coordinates
@@ -412,7 +397,7 @@ namespace EIT_SOLVER
         }
 
         // Set the calulated potential values at the vertexes for visualization purposes
-        private void SetPotentialValues(bool strongDirichlet)
+        private void SetPotentialValues()
         {
             // Clear previous potentials
             for (int i = 0; i < Mesh.InternalVertices.Count; i++)
@@ -424,16 +409,8 @@ namespace EIT_SOLVER
 
             double avg = Alpha.Average();
 
-            if(!strongDirichlet)
-            {
-                for (int i = 0; i < Mesh.BoundaryVertices.Count; i++)
-                    Mesh.BoundaryVertices[i].Potential = Gamma[i];
-            }
-            else
-            {
-                for (int i = 0; i < Mesh.BoundaryVertices.Count; i++)
-                    Mesh.BoundaryVertices[i].Potential = BoundaryVoltages[i];
-            }
+            for (int i = 0; i < Mesh.BoundaryVertices.Count; i++)
+                Mesh.BoundaryVertices[i].Potential = BoundaryVoltages[i];
         }
 
         public void SetBoundaryPotentials(double[] boundaryPotentials)
@@ -445,6 +422,46 @@ namespace EIT_SOLVER
                 Mesh.BoundaryVertices[i].Potential = boundaryPotentials[i];
         }
 
+        private void LogSystem()
+        {
+#if _LOGGING_
+            int size = N_phi + N_lambda;
+            A = new double[size, size];
+            b = new double[size];
+
+            for(int i = 0; i < N_phi; i++)
+                for(int j = 0; j < N_phi; j++)
+                    A[i, j] = K[i, j];
+               
+
+            for (int i = 0; i < N_phi; i++)
+            {
+                for (int j = 0; j < N_lambda; j++)
+                {
+                    A[i, N_phi + j] = B[i, j];
+                    A[N_phi + j, i] = B[i, j];
+                }
+            }
+
+            for (int i = N_phi; i < size; i++)
+                b[i] = f[i - N_phi];
+
+            Console.WriteLine("Big [K B; B^T 0] Matrix:");
+            for (int i = 0; i < size; i++)
+            {
+                for (int j = 0; j < size; j++)
+                    Console.Write($"{A[i, j].ToString("F1").Replace(',', '.'),-5}");
+
+                Console.Write(";");
+                Console.WriteLine();
+            }
+
+            Console.WriteLine("RHS vector:");
+            for (int i = 0; i < size; i++)
+                Console.Write($"{b[i].ToString("F4").Replace(',','.')} ");
+#endif
+        }
+
         public void Solve(string? solverMethod)
         {
             if (String.IsNullOrEmpty(solverMethod))
@@ -453,38 +470,44 @@ namespace EIT_SOLVER
 #if _LOGGING_
             Console.WriteLine("\nCalculating Stiffness Matrix!\n");
 #endif
-
             CalculateStiffnessMatrix();
-
 #if _LOGGING_
             Console.WriteLine("\nCalculating Boundary Matrix!\n");
 #endif
-
             CalculateBoundaryMatrix();
-
 #if _LOGGING_
             Console.WriteLine("\nCalculating Load Vector!\n");
 #endif
             CalculateLoadVector();
 
 #if _LOGGING_
+            Console.WriteLine("\nThe assembled saddle-point system.\n");
+
+            LogSystem();
+#endif
+
+#if _LOGGING_
             Console.WriteLine("\nSolving the Saddle Point System!\n");
 #endif
             if (solverMethod == "LU Decomposition")
-                DiscreteSolver.Solve("LU", N_phi, N_lambda, K, B, f, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
+                DiscreteSolver.Solve("LU", N_phi, N_lambda, K, B, f, A, b, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
             else if (solverMethod == "Singular Value Decomposition")
-                DiscreteSolver.Solve("SVD", N_phi, N_lambda, K, B, f, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
+                DiscreteSolver.Solve("SVD", N_phi, N_lambda, K, B, f, A, b, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
+            else if (solverMethod == "Truncated SVD")
+                DiscreteSolver.Solve("TSVD", N_phi, N_lambda, K, B, f, A, b, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
             else if (solverMethod == "Conjugate Gradient")
-                DiscreteSolver.Solve("CG", N_phi, N_lambda, K, B, f, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
+                DiscreteSolver.Solve("CG", N_phi, N_lambda, K, B, f, A, b, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
             else if (solverMethod == "Without Lagrange Multipliers")
-                DiscreteSolver.Solve("w.o.l.", N_phi, N_lambda, K, B, f, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
+                DiscreteSolver.Solve("w.o.l.", N_phi, N_lambda, K, B, f, A, b, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
+            else if (solverMethod == "GMRES")
+                DiscreteSolver.Solve("GMRES", N_phi, N_lambda, K, B, f, A, b, ref Alpha, ref Gamma, -Theta, BoundaryVoltages);
             else
                 throw new ArgumentOutOfRangeException(nameof(solverMethod), "Solver method is not specified within possible values!");
 
-            if (solverMethod == "Without Lagrange Multipliers")
-                SetPotentialValues(true);
-            else
-                SetPotentialValues(false);
+#if _LOGGING_
+            Console.WriteLine("Setting calculated potentials.");
+#endif
+            SetPotentialValues();
         }
     }
 }

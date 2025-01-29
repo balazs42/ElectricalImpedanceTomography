@@ -18,6 +18,7 @@ namespace EIT_SOLVER
         public List<Edge> InternalEdges { get; private set; }
         public double Density { get; set; } = 1.0;
         public double Size { get; set; } = 10;
+        public bool IsCircular { get; set; } = false;
         public Mesh()
         {
             Vertices = new List<Vertex>();
@@ -85,6 +86,8 @@ namespace EIT_SOLVER
             // Generate the mesh
             var meshNet = polygon.Triangulate(options, quality);
 
+            int elementIdCntr = 0;
+
             // Add elements to the mesh
             foreach (var tri in meshNet.Triangles)
             {
@@ -108,8 +111,9 @@ namespace EIT_SOLVER
                      * 
                      */
 
-                    Element element = new Element(v1, v2, v3);
+                    Element element = new Element(v1, v2, v3, elementIdCntr);
                     Elements.Add(element);
+                    elementIdCntr++;
 
                     Edge[] elementEdges = element.Edges;
 
@@ -150,6 +154,8 @@ namespace EIT_SOLVER
         {
             // Reset lists
             ResetLists();
+
+            IsCircular = false;
 
             if(width > 20.0) width = 20.0;   // Limit the width for visualization
             if(height > 20.0) height = 20.0; // Limit the height for visualization
@@ -204,6 +210,9 @@ namespace EIT_SOLVER
         {
             // Reset lists
             ResetLists();
+
+            Size = radius;
+            IsCircular = true;
 
             List<Vertex> vertices = new List<Vertex>();
 

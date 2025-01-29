@@ -77,8 +77,8 @@ namespace EIT_SOLVER
             return measurements;
         }
 
-        // Generate measurement data, from which the potential distribution on the boundary is assymetric
-        public double[] SimulateAssymetricMeasurements(int numPoints, double maxPotential)
+        // Generate measurement data, from which the potential distribution on the boundary is gaussian
+        public double[] SimulateGaussian(int numPoints, double maxPotential)
         {
             double[] measurements = new double[numPoints];
 
@@ -119,6 +119,22 @@ namespace EIT_SOLVER
             double range = (maxPotential - minPotential) + minPotential;
 
             return AddNoiseToMeasurement(measurements, range);
+        }
+
+        // Simulate assymetric potential distribution on the boundary
+        public double[] SimulateAssymetric(int numPoints, double maxPotential)
+        {
+            int half = numPoints / 2;
+            double[] measurements = new double[numPoints];
+
+            for(int i = 0; i < numPoints; i++)
+            {
+                if(i < half)
+                    measurements[i] = maxPotential;
+                else
+                    measurements[i] = 0;
+            }
+            return measurements;
         }
 
         // Denoise the measurements data
@@ -497,5 +513,142 @@ namespace EIT_SOLVER
 
             return result;
         }
+
+
+        // Interpolage boundary data equally
+        private double[] InterpolateBoundaryData(Mesh Mesh, double[] BoundaryVoltages, int numPoints)
+        {
+            int numMeasurements = BoundaryVoltages.Length;
+            int numBoundaryVertices = numPoints;
+
+            // Validate inputs
+            if (numMeasurements > numBoundaryVertices)
+            {
+                throw new ArgumentException("Number of measurements cannot exceed the number of boundary vertices.");
+            }
+
+            // Initialize the result array with default potentials (e.g., zeros)
+            double[] interpolatedPotentials = new double[numBoundaryVertices];
+
+            // If the mesh is circular, proceed with circular interpolation
+            if (Mesh.IsCircular)
+            {
+                // Calculate the step size to distribute measurements equally
+                double step = (double)numBoundaryVertices / numMeasurements;
+                List<int> measurementIndices = new List<int>();
+
+                // Assign measurements at equally spaced indices
+                for (int i = 0; i < numMeasurements; i++)
+                {
+                    // Calculate the exact position for the measurement
+                    double position = i * step;
+
+                    // Find the closest integer index
+                    int index = (int)Math.Round(position) % numBoundaryVertices;
+
+                    // Ensure no duplicate indices by adjusting if necessary
+                    while (measurementIndices.Contains(index))
+                    {
+                        index = (index + 1) % numBoundaryVertices;
+                    }
+
+                    // Add to the list of measurement indices
+                    measurementIndices.Add(index);
+
+                    // Assign the measured potential
+                    interpolatedPotentials[index] = BoundaryVoltages[i];
+                }
+
+                // Interpolate potentials between measurements
+                for (int i = 0; i < numMeasurements; i++)
+                {
+                    // Current and next measurement indices
+                    int currentIndex = measurementIndices[i];
+                    int nextIndex = measurementIndices[(i + 1) % numMeasurements];
+
+                    // Current and next potentials
+                    double currentPotential = interpolatedPotentials[currentIndex];
+                    double nextPotential = interpolatedPotentials[nextIndex];
+
+                    // Calculate the number of vertices between current and next measurements
+                    int count;
+                    if (nextIndex > currentIndex)
+                    {
+                        count = nextIndex - currentIndex - 1;
+                    }
+                    else
+                    {
+                        count = numBoundaryVertices - currentIndex + nextIndex - 1;
+                    }
+
+                    // Interpolate potentials for the vertices between current and next measurements
+                    for (int j = 1; j <= count; j++)
+                    {
+                        int interpolatedIndex = (currentIndex + j) % numBoundaryVertices;
+                        double fraction = (double)j / (count + 1); // Fraction between 0 and 1
+                        double interpolatedPotential = currentPotential + fraction * (nextPotential - currentPotential);
+
+                        // Assign the interpolated potential
+                        interpolatedPotentials[interpolatedIndex] = interpolatedPotential;
+                    }
+                }
+            }
+            else
+            {
+                // Handle non-circular meshes if necessary
+                // For simplicity, we'll implement linear interpolation assuming the boundary is a polygon
+
+                // Distribute measurements equally along the boundary
+                double step = (double)numBoundaryVertices / numMeasurements;
+                List<int> measurementIndices = new List<int>();
+
+                for (int i = 0; i < numMeasurements; i++)
+                {
+                    double position = i * step;
+                    int index = (int)Math.Round(position) % numBoundaryVertices;
+
+                    // Avoid duplicate indices
+                    while (measurementIndices.Contains(index))
+                    {
+                        index = (index + 1) % numBoundaryVertices;
+                    }
+
+                    measurementIndices.Add(index);
+                    interpolatedPotentials[index] = BoundaryVoltages[i];
+                }
+
+                // Interpolate potentials between measurements
+                for (int i = 0; i < numMeasurements; i++)
+                {
+                    int currentIndex = measurementIndices[i];
+                    int nextIndex = measurementIndices[(i + 1) % numMeasurements];
+
+                    double currentPotential = interpolatedPotentials[currentIndex];
+                    double nextPotential = interpolatedPotentials[nextIndex];
+
+                    int count;
+                    if (nextIndex > currentIndex)
+                    {
+                        count = nextIndex - currentIndex - 1;
+                    }
+                    else
+                    {
+                        count = numBoundaryVertices - currentIndex + nextIndex - 1;
+                    }
+
+                    for (int j = 1; j <= count; j++)
+                    {
+                        int interpolatedIndex = (currentIndex + j) % numBoundaryVertices;
+                        double fraction = (double)j / (count + 1);
+                        double interpolatedPotential = currentPotential + fraction * (nextPotential - currentPotential);
+
+                        interpolatedPotentials[interpolatedIndex] = interpolatedPotential;
+                    }
+                }
+            }
+
+            return interpolatedPotentials;
+        }
+
     }
 }
